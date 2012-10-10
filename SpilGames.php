@@ -23,6 +23,10 @@
          */
         const USER_GET = "api.user.get";
         /**
+         * @see https://www.spilgames.com/developer/m/wiki/API_api.user.getExtended
+         */
+        const USER_GETEXTENDED = "api.user.getExtended";
+        /**
          * @see https://www.spilgames.com/developer/m/wiki/API_api.account.getApplicationToken
          */
         const ACCOUNT_GETAPPLICATIONTOKEN = "api.account.getApplicationToken";
@@ -242,15 +246,20 @@
             //set timeout
             stream_set_timeout($fp, $timeout);
             //headers
-            fputs($fp, "POST $path/ HTTP/1.1" . $crlf);
-            fputs($fp, "Host: $host" . $crlf);
-            fputs($fp, "User-Agent: SpilGames-API-PHP-Client-v" . self::CLIENT_VERSION . $crlf);
-            fputs($fp, "Content-Type: application/x-www-form-urlencoded; charset=UTF-8" . $crlf);
-            fputs($fp, "Accept-Encoding: gzip, deflate" . $crlf);
-            fputs($fp, "Content-length: ".strlen($encodeData). $crlf);
+            $sendData = 'POST ' . $path . '/ HTTP/1.1' . $crlf;
+            $sendData .= 'Host: ' . $host . $crlf;
+            $sendData .= 'User-Agent: SpilGames-API-PHP-Client-v' . self::CLIENT_VERSION . $crlf;
+            $sendData .= 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8' . $crlf;
+            $sendData .= 'Accept-Encoding: gzip, deflate' . $crlf;
+            $sendData .= 'Content-length: '. strlen($encodeData). $crlf;
+            //$sendData .= 'X-App-Sig: ' . base64_encode(sha1($encodeData . $this->_settings[self::SETTING_SECRET])) . $crlf;
             //extra header
-            fputs($fp, "Connection: keep-alive" . $crlf . $crlf);
-            fputs($fp, $encodeData . $crlf . $crlf);
+            $sendData .= 'Connection: keep-alive' . $crlf . $crlf;
+            $sendData .= $encodeData . $crlf . $crlf;
+            //send
+            echo $sendData;
+            //exit;
+            fwrite($fp, $sendData);
             //read content and headers
             $content = null;
             $headers = array();
@@ -364,7 +373,7 @@
         private final function _parseResult($result) {
             //check error in responce
             if (isset($result['error'])) {
-                return $this->_makeError($result['error'], 0, $result['error_string']);
+                return $this->_makeError($result['error'], 0, $result['detail']);
             }
             //check for new auth key
             if (isset($result['auth'])) {

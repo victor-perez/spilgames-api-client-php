@@ -27,7 +27,7 @@
         case 'SpilGames::USER_GET' :
             ###### Example ######
             $example = <<<EXAMPLE
-SpilGames(SpilGames::USER_GET , null, function (\$result) {
+SpilGames(SpilGames::USER_GET, null, function (\$result) {
     //check of result is an error
     if (\$result[isError]) {
         echo 'Error:';
@@ -38,19 +38,40 @@ SpilGames(SpilGames::USER_GET , null, function (\$result) {
 EXAMPLE;
 
             ###### call ######
-            SpilGames(SpilGames::USER_GET , null, function ($result) {
+            SpilGames(SpilGames::USER_GET, null, function ($result) {
                 SpilResults::$data[SpilGames::USER_GET] = $result;
             });
             break;
 ####### USER_GET #######
 
 
+#######  USER_GETEXTENDED  #######
+        case 'SpilGames::USER_GETEXTENDED' :
+            ###### Example ######
+            $example = <<<EXAMPLE
+SpilGames(SpilGames::USER_GETEXTENDED, null, function (\$result) {
+    //check of result is an error
+    if (\$result[isError]) {
+        echo 'Error:';
+    }
+    //show result
+    var_dump(\$result);
+});
+EXAMPLE;
+
+            ###### call ######
+            SpilGames(SpilGames::USER_GETEXTENDED, null, function ($result) {
+                SpilResults::$data[SpilGames:: USER_GETEXTENDED] = $result;
+            });
+            break;
+#######  USER_GETEXTENDED  #######
+
 
 ####### ACCOUNT_GETAPPLICATIONTOKEN #######
         case 'SpilGames::ACCOUNT_GETAPPLICATIONTOKEN' :
             ###### Example ######
             $example = <<<EXAMPLE
-SpilGames(SpilGames::ACCOUNT_GETAPPLICATIONTOKEN , null, function (\$result) {
+SpilGames(SpilGames::ACCOUNT_GETAPPLICATIONTOKEN, null, function (\$result) {
     //check of result is an error
     if (\$result[isError]) {
         echo 'Error:';
@@ -104,7 +125,6 @@ EXAMPLE;
         <style type="text/css">
             #callResult > details > summary { font-size: 20px; font-weight: bolder; }
             tr:nth-child(2n+1) { background: #C0C0C0; }
-            td { padding: 2px; }
         </style>
         <!-- SyntaxHighlighter //-->
         <script src="//google-code-prettify.googlecode.com/svn/trunk/src/prettify.js" type="text/javascript"></script>
@@ -112,6 +132,10 @@ EXAMPLE;
     </head>
     <body>
         <script type="text/javascript">
+            //IE
+            document.createElement('details');
+            document.createElement('summary');
+            //spil controller
             SpilGames({readyevent: 'sp.jsready'}, ['JSLib', 'Net'], function (jslib, Net) {
                 //backend
                 var backend = "<?php echo $_SERVER['REQUEST_URI']; ?>",
@@ -122,6 +146,7 @@ EXAMPLE;
                     TmpTableRow = '<tr><td>:param:</td><td>:value:</td></tr>';
                 //force reset of the form
                 formElm.reset();
+                window['PR_SHOULD_USE_CONTINUATION'] = false;
                 //subscribe to change event
                 jslib.subscribe('sp.call.changed', function (select) {
                     var slt = select || formElm.apicall,
@@ -142,7 +167,12 @@ EXAMPLE;
                         details,
                         result;
                     if (data.example) {
-                        exampleElm.innerHTML = prettyPrintOne(data.example, 'js');
+                        //cache buster for prettyprint
+                        exampleElm.className = 'prettyprint t' + (+new Date());
+                        //add example to the page
+                        exampleElm.appendChild(document.createTextNode(data.example));
+                        //prettyprint
+                        prettyPrint();
                     }
                     if (data.result) {
                         for (var name in data.result) {
@@ -171,18 +201,21 @@ EXAMPLE;
             <option value="0" selected="selected">
                 Select an API call
             </option>
+            <optgroup label="Account">
+                <option value="SpilGames::ACCOUNT_GETAPPLICATIONTOKEN">
+                    SpilGames::ACCOUNT_GETAPPLICATIONTOKEN
+                </option>
+            </optgroup>
             <optgroup label="User">
                 <option value="SpilGames::USER_GET">
                     SpilGames::USER_GET
                 </option>
-                <option value="SpilGames::ACCOUNT_GETAPPLICATIONTOKEN">
-                    SpilGames::ACCOUNT_GETAPPLICATIONTOKEN
+                <option value="SpilGames::USER_GETEXTENDED">
+                    SpilGames::USER_GETEXTENDED
                 </option>
             </optgroup>
         </select>
     </form>
     <pre id="callExample" class="prettyprint"></pre>
-    <div id="callResult">
-
-    </div>
+    <div id="callResult"></div>
 </html>
