@@ -10,9 +10,9 @@
     //set SpilGames secret
     SpilGames::set(SpilGames::SETTING_SECRET, $SpilGamesSecret);
     //subscribe to auth changed event, this is always needed, because if the auth change you need to store the new token for this user
-    SpilGames::subscribe(SpilGames::EVENT_AUTH_CHANGED, function ($data) {
+    SpilGames::subscribe(SpilGames::EVENT_APPAUTH_CHANGED , function ($data) {
         //add event result to SpilResults object
-        SpilResults::$data[SpilGames::EVENT_AUTH_CHANGED] = array("data" => $data);
+        SpilResults::$data[SpilGames::EVENT_APPAUTH_CHANGED ] = array("data" => $data);
         //get new token
         SpilResults::$data[SpilGames::ACCOUNT_GETAPPLICATIONTOKEN] = SpilGames(SpilGames::ACCOUNT_GETAPPLICATIONTOKEN);
     });

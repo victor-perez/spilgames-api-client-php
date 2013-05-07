@@ -1,5 +1,4 @@
 <?php
-
     require_once('../SpilGames.php');
     class SpilGamesTest extends  PHPUnit_Framework_TestCase {
         public function testUserGet() {

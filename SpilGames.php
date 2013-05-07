@@ -7,51 +7,55 @@
         ################## Public API ##################
         /**
          * @var string contains client version
-         * @see https://www.spilgames.com/developer/m/wiki/API_const_CLIENT_VERSION
+         * @see https://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#CLIENT_VERSION
          */
         const CLIENT_VERSION = "1.0.0";
         /**
-         * @see https://www.spilgames.com/developer/m/wiki/API_const_STATE_LOGGEDIN
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#STATE_LOGGEDIN
          */
         const STATE_LOGGEDIN = 'logged-in';
         /**
-         * @see https://www.spilgames.com/developer/m/wiki/API_const_STATE_LOGGEDOUT
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#STATE_LOGGEDOUT
          */
         const  STATE_LOGGEDOUT = 'logged-out';
         /**
-         * @see https://www.spilgames.com/developer/m/wiki/API_api.user.get
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.user.get
          */
         const USER_GET = "api.user.get";
         /**
-         * @see https://www.spilgames.com/developer/m/wiki/API_api.user.getExtended
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.user.getExtended
          */
         const USER_GETEXTENDED = "api.user.getExtended";
         /**
-         * @see https://www.spilgames.com/developer/m/wiki/API_api.account.getApplicationToken
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.account.getApplicationToken
          */
         const ACCOUNT_GETAPPLICATIONTOKEN = "api.account.getApplicationToken";
         /**
-         * @see https://www.spilgames.com/developer/m/wiki/API_api.portal.force.auth
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.friend.list
+         */
+        const FRIEND_LIST = "api.friend.list";
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.portal.force.auth
          */
         const FORCE_AUTH = 'api.portal.force.auth';
         /**
-         * @see https://www.spilgames.com/developer/m/wiki/API_api.event.user.login
+         * @see http://devs.spilgames.com
          */
         const EVENT_USER_LOGIN = "api.event.user.login";
         /**
-         * @see https://www.spilgames.com/developer/m/wiki/API_api.event.user.logout
+         * @see http://devs.spilgames.com
          */
         const EVENT_USER_LOGOUT = "api.event.user.logout";
         /**
-         * @see https://www.spilgames.com/developer/m/wiki/API_api.event.auth.changed
+         * @see http://devs.spilgames.com
          */
-        const EVENT_AUTH_CHANGED = 'api.event.auth.changed';
+        const EVENT_APPAUTH_CHANGED = 'api.event.appauth.changed';
         /**
-         * @see https://www.spilgames.com/developer/m/wiki/API_set.application.token
+         * @see http://devs.spilgames.com
          */
         const SETTING_AUTH = 'set.application.token';
         /**
-         * @see https://www.spilgames.com/developer/m/wiki/API_set.application.secret
+         * @see http://devs.spilgames.com
          */
         const SETTING_SECRET = 'set.application.secret';
         /**
@@ -218,7 +222,7 @@
          */
         private final function _spapiRequest ($path, $data) {
             //settings
-            $host = 'api-stg.spilgames.com';
+            $host = 'api.spilgames.com';
             $port = 443;
             $crlf = "\r\n";
             $timeout = 2;
@@ -252,7 +256,7 @@
             $sendData .= 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8' . $crlf;
             $sendData .= 'Accept-Encoding: gzip, deflate' . $crlf;
             $sendData .= 'Content-length: '. strlen($encodeData). $crlf;
-            //$sendData .= 'X-App-Sig: ' . base64_encode(sha1($encodeData . $this->_settings[self::SETTING_SECRET])) . $crlf;
+            $sendData .= 'X-App-Sig: ' . base64_encode(sha1($encodeData . $this->_settings[self::SETTING_SECRET])) . $crlf;
             //extra header
             $sendData .= 'Connection: keep-alive' . $crlf . $crlf;
             $sendData .= $encodeData . $crlf . $crlf;
@@ -376,24 +380,24 @@
                 return $this->_makeError($result['error'], 0, $result['detail']);
             }
             //check for new auth key
-            if (isset($result['auth'])) {
+            if (isset($result['appAuth'])) {
                 //parse token
                 try {
-                    $token = $this->_parseToken($result['auth']['token']);
+                    $token = $this->_parseToken($result['appAuth']['token']);
                 } catch (Exception $tokenError) {
                     //return error
                     return $this->_makeError($tokenError->getMessage(), 0, 'The server has returned an invalid token',  json_encode($result));
                 }
                 //set new token for next calls
-                $this->_set(self::SETTING_AUTH, $result['auth']['token']);
+                $this->_set(self::SETTING_AUTH, $result['appAuth']['token']);
                 //get state
                 $state = self::STATE_LOGGEDOUT;
                 if ($token['authorization_level'] === 1) {
                     $state = self::STATE_LOGGEDIN;
                 }
                 //trigger event
-                $this->_publish(self::EVENT_AUTH_CHANGED, array('state'=>$state));
-                unset($result['auth']);
+                $this->_publish(self:: EVENT_APPAUTH_CHANGED , array('state'=>$state));
+                unset($result['appAuth']);
             }
             //return result
             return current($result);
@@ -426,7 +430,7 @@
                 throw new Exception("Invalid application signature");
             }
             //decode data
-            $decodeData = unpack("a1magic_byte/Cversion/Ctype/Creserved/Ckeyspace/Ckey/Ngid_high/Ngid_low/nsite/Cchannel/Cauthorization_level/Ntimestamp/Napplication/a*profilar_username", $rawData);
+            $decodeData = unpack("a1magic_byte/Cversion/Ctype/Creserved/Ckeyspace/Ckey/Ngid_high/Ngid_low/nsite/Cchannel/Cauthorization_level/Ntimestamp/NappId_high/NappId_low/a*profilar_username", $rawData);
             //check keyspace
             if ($decodedData['keyspace'] > 1) {
                 throw new Exception("Invalid keyspace");
