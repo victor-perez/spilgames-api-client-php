@@ -9,7 +9,7 @@
          * @var string contains client version
          * @see https://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#CLIENT_VERSION
          */
-        const CLIENT_VERSION = "1.0.0";
+        const CLIENT_VERSION = "1.0.1";
         /**
          * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#STATE_LOGGEDIN
          */
@@ -17,7 +17,15 @@
         /**
          * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#STATE_LOGGEDOUT
          */
-        const  STATE_LOGGEDOUT = 'logged-out';
+        const STATE_LOGGEDOUT = 'logged-out';
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#LEVEL_GUEST
+         */
+        const LEVEL_GUEST = 'guest';
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#LEVEL_USER
+         */
+        const LEVEL_USER = 'user';
         /**
          * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.user.get
          */
@@ -29,7 +37,16 @@
         /**
          * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.account.getApplicationToken
          */
+        const USER_LIST = "api.user.list";
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.account.getApplicationToken
+         * @deprecated use AUTH_GETAPPLICATIONTOKEN instead
+         */
         const ACCOUNT_GETAPPLICATIONTOKEN = "api.account.getApplicationToken";
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.account.getApplicationToken
+         */
+        const AUTH_GETAPPLICATIONTOKEN = "api.account.getApplicationToken";
         /**
          * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.friend.list
          */
@@ -39,11 +56,11 @@
          */
         const FORCE_AUTH = 'api.portal.force.auth';
         /**
-         * @see http://devs.spilgames.com
+         * will be published on user login
          */
         const EVENT_USER_LOGIN = "api.event.user.login";
         /**
-         * @see http://devs.spilgames.com
+         * will be published on user logout
          */
         const EVENT_USER_LOGOUT = "api.event.user.logout";
         /**
@@ -155,12 +172,16 @@
                 return $this->_makeResult($this->_makeError('Not supported on the backend'), $callback);
             }
             //return token
-            if ('api' . $call  === self::ACCOUNT_GETAPPLICATIONTOKEN) {
+            if ('api' . $call  === self::AUTH_GETAPPLICATIONTOKEN) {
                 //check of token is valid
                 try {
                     $this->_parseToken($this->_settings[self::SETTING_AUTH]);
                     //token is valid, return token
-                    $result = array ('token'=> $this->_settings[self::SETTING_AUTH]);
+                    $result = array (
+                        "appAuth" =>array(
+                            "token"=> $this->_settings[self::SETTING_AUTH]
+                        )
+                    );  
                 } catch (Exception $tokenError) {
                     //return error
                     $result = $this->_makeError($tokenError->getMessage(), 0, 'The application has provided an invalid token or the secret is invalid');
@@ -261,7 +282,6 @@
             $sendData .= 'Connection: keep-alive' . $crlf . $crlf;
             $sendData .= $encodeData . $crlf . $crlf;
             //send
-            echo $sendData;
             //exit;
             fwrite($fp, $sendData);
             //read content and headers
@@ -396,11 +416,15 @@
                     $state = self::STATE_LOGGEDIN;
                 }
                 //trigger event
-                $this->_publish(self:: EVENT_APPAUTH_CHANGED , array('state'=>$state));
+                $this->_publish(self::EVENT_APPAUTH_CHANGED , array('state'=>$state));
                 unset($result['appAuth']);
             }
+            //remove auth, this should never happen
+            if (isset($result['auth'])) {
+                unset($result['auth']);
+            }
             //return result
-            return current($result);
+            return $result;
         }
         /**
          * Will check of the token is valid and will return the parse token.
@@ -472,14 +496,27 @@
          * @return array, API result
          */
         private final function _makeResult($data, $callback) {
+            $noDataKeys = array("pageControl");
             $result = array();
             if (isset($data['isError']) && $data['isError'] === true) {
                 $result = $data;
             } else {
-                $result = array(
+                //use first record in the array, most result of the SPAPI will have only 1 key.
+                $result = array_merge($data, array(
                     'isError' => false,
-                    'data' => $data
-                );
+                    'data' => current($data)
+                ));                
+                //check of the result has more keys, if so we need to find the correct data key
+                if (count($data)  > 1) {
+                    foreach ($data as $key=>$value) {
+                        //check of the key is in the no data key list
+                        if(!in_array($key, $noDataKeys)) {
+                            //set the $value as data
+                            $result['data'] = $value;
+                            break;
+                        }
+                    }
+                }
             }
             //check for callback
             if ($callback !== null) {

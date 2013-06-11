@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<api>
+	<module name="user">
+		<method name="USER_GET">
+			<example><![CDATA[
+SpilGames(SpilGames::USER_GET, null, function ($result) {
+	//check of result is an error
+	if ($result[isError]) {
+		echo ' --- Error! ---';
+	}
+	//show result
+	var_dump($result);
+});
+]]></example>
+		</method>
+
+		<method name="USER_GETEXTENDED">
+			<example><![CDATA[
+SpilGames(SpilGames::USER_GETEXTENDED , null, function ($result) {
+	//check of result is an error
+	if ($result[isError]) {
+		echo ' --- Error! ---';
+	}
+	//show result
+	var_dump($result);
+});]]></example>
+		</method>
+
+		<method name="USER_LIST">
+			<example><![CDATA[
+SpilGames(SpilGames::USER_LIST, array("guidList"=>array("288516063279296192", "288512283708071058")), function ($result) {
+	//check of result is an error
+	if ($result[isError]) {
+		echo ' --- Error! ---';
+	}
+	//show result
+	var_dump($result);
+});]]></example>
+			<data>
+				<guidList type="array">
+					<item type="string">288516063279296192</item>
+					<item type="string">288512283708071058</item>
+				</guidList>
+			</data>
+		</method>
+
+	</module>
+
+	<module name="friend">
+		<method name="FRIEND_LIST">
+			<example><![CDATA[
+SpilGames(SpilGames::FRIEND_LIST, null, function ($result) {
+	//check of result is an error
+	if ($result[isError]) {
+		echo ' --- Error! ---';
+	}
+	//show result
+	var_dump($result);
+});]]></example>
+		</method>		
+	</module>
+
+	<module name="auth">
+		<method name="AUTH_GETAPPLICATIONTOKEN">
+			<example><![CDATA[
+SpilGames(SpilGames::AUTH_GETAPPLICATIONTOKEN, null, function ($result) {
+	//check of result is an error
+	if ($result[isError]) {
+		echo ' --- Error! ---';
+	}
+	//show result
+	var_dump($result);
+});]]></example>
+		</method>
+	</module>
+</api>

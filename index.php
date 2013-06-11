@@ -9,105 +9,55 @@
     }
     //set SpilGames secret
     SpilGames::set(SpilGames::SETTING_SECRET, $SpilGamesSecret);
-    //subscribe to auth changed event, this is always needed, because if the auth change you need to store the new token for this user
-    SpilGames::subscribe(SpilGames::EVENT_APPAUTH_CHANGED , function ($data) {
-        //add event result to SpilResults object
-        SpilResults::$data[SpilGames::EVENT_APPAUTH_CHANGED ] = array("data" => $data);
-        //get new token
-        SpilResults::$data[SpilGames::ACCOUNT_GETAPPLICATIONTOKEN] = SpilGames(SpilGames::ACCOUNT_GETAPPLICATIONTOKEN);
-    });
-    //check of call is post
-    if (!empty($_POST) && isset($_POST['call'])) {
-        //switch for all supported calls
-        switch ($_POST['call']) {
+    /**
+     * Run example what is selected on the font-end
+     */
+    //method to parse the data in the xml
+    function parseData ($node, &$data) {
+        //get type from atr.
+        switch ((string) $node["type"]) {
+            case 'array':
+                $data = array();
+                foreach ($node  as $item) {
+                    parseData($item, $data[]);
+                }
+                break;
 
-
-
-####### USER_GET #######
-        case 'SpilGames::USER_GET' :
-            ###### Example ######
-            $example = <<<EXAMPLE
-SpilGames(SpilGames::USER_GET, null, function (\$result) {
-    //check of result is an error
-    if (\$result[isError]) {
-        echo 'Error:';
-    }
-    //show result
-    var_dump(\$result);
-});
-EXAMPLE;
-
-            ###### call ######
-            SpilGames(SpilGames::USER_GET, null, function ($result) {
-                SpilResults::$data[SpilGames::USER_GET] = $result;
-            });
-            break;
-####### USER_GET #######
-
-
-#######  USER_GETEXTENDED  #######
-        case 'SpilGames::USER_GETEXTENDED' :
-            ###### Example ######
-            $example = <<<EXAMPLE
-SpilGames(SpilGames::USER_GETEXTENDED, null, function (\$result) {
-    //check of result is an error
-    if (\$result[isError]) {
-        echo 'Error:';
-    }
-    //show result
-    var_dump(\$result);
-});
-EXAMPLE;
-
-            ###### call ######
-            SpilGames(SpilGames::USER_GETEXTENDED, null, function ($result) {
-                SpilResults::$data[SpilGames:: USER_GETEXTENDED] = $result;
-            });
-            break;
-#######  USER_GETEXTENDED  #######
-
-
-####### ACCOUNT_GETAPPLICATIONTOKEN #######
-        case 'SpilGames::ACCOUNT_GETAPPLICATIONTOKEN' :
-            ###### Example ######
-            $example = <<<EXAMPLE
-SpilGames(SpilGames::ACCOUNT_GETAPPLICATIONTOKEN, null, function (\$result) {
-    //check of result is an error
-    if (\$result[isError]) {
-        echo 'Error:';
-    }
-    //show result
-    var_dump(\$result);
-});
-EXAMPLE;
-
-            ###### call ######
-            SpilGames(SpilGames::ACCOUNT_GETAPPLICATIONTOKEN , null, function ($result) {
-                SpilResults::$data[SpilGames::ACCOUNT_GETAPPLICATIONTOKEN] = $result;
-            });
-            break;
-####### ACCOUNT_GETAPPLICATIONTOKEN #######
-
-
-
-
-        //close switch
+            case "string":
+                $data = (string) $node;
+                break;
+                
         }
-        //output
-        ob_clean();
-        echo json_encode(array(
-            "example" => $example,
-            "result" => SpilResults::$data
-        ));
+    }
+    //check of call is a post
+    if (!empty($_POST) && isset($_POST['example'])) {
+        //needed because some server block read file in the libxml
+        $xmlFile = file_get_contents('example.xml');
+        $XML = new SimpleXMLElement($xmlFile);
+        $Method = $XML->xpath("//method[@name='" . $_POST['example'] . "']");
+        if (!empty($Method)) {
+            $data = null;
+            //check of method need data
+            if($Method[0]->data) {
+                $data = array();
+                foreach ($Method[0]->data->children() as $key=>$value) {
+                    parseData($value, $data[$key]);
+                }
+            }
+            SpilGames(constant('SpilGames::' . $_POST['example']), $data, function ($result) {
+                if ($result["isError"]) {
+                    var_dump($result);
+                } else {
+                    $data = array("data"=>$result["data"]);
+                    if (isset($result["pageControl"])) {
+                        $data["pageControl"] = $result["pageControl"];
+                    }
+                    var_dump($data);
+                }
+            });
+        }
         exit();
-    //close if
     }
-
-    ###### only needed for testing ######
-    class SpilResults {
-        public static $data = array();
-    }
-    ###### ----------------- ######
 ?>
 <!DOCTYPE html>
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
@@ -120,73 +70,85 @@ EXAMPLE;
         <title>SpilGames API test page</title>
         <meta name="description" content="SpilGames API test page">
         <meta name="viewport" content="width=device-width">
-        <!-- SpilGames JavaScript API -->
+        <!-- SpilGames JavaScript lib -->
         <script src="//api.spilgames.com/js"></script>
-        <style type="text/css">
-            #callResult > details > summary { font-size: 20px; font-weight: bolder; }
-            tr:nth-child(2n+1) { background: #C0C0C0; }
-        </style>
         <!-- SyntaxHighlighter //-->
-        <script src="//google-code-prettify.googlecode.com/svn/trunk/src/prettify.js" type="text/javascript"></script>
-        <link href="//google-code-prettify.googlecode.com/svn/trunk/src/prettify.css" type="text/css" rel="stylesheet" />
+        <script src="//google-code-prettify.googlecode.com/svn/loader/run_prettify.js?autoload=false&skin=sons-of-obsidian" type="text/javascript"></script>
+        <!--[if lt IE 9]>
+            <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.6.2/html5shiv.js"></script>
+        <![endif]-->
+        <style type="text/css">
+            summary {
+                display: block;
+            }
+            pre {
+                border-radius: 9px;
+                padding: 10px 0px;
+            }
+        </style>
     </head>
     <body>
+
         <script type="text/javascript">
-            //IE
-            document.createElement('details');
-            document.createElement('summary');
-            //spil controller
-            SpilGames({readyevent: 'sp.jsready'}, ['JSLib', 'Net'], function (jslib, Net) {
-                //backend
-                var backend = "<?php echo $_SERVER['REQUEST_URI']; ?>",
-                    formElm = document.getElementById('callForm'),
-                    exampleElm = document.getElementById('callExample'),
-                    resultElm = document.getElementById('callResult'),
-                    TmpDetails = '<details open="open"><summary>:callname:</summary><table>:calltable:</table></details>',
-                    TmpTableRow = '<tr><td>:param:</td><td>:value:</td></tr>';
-                //force reset of the form
-                formElm.reset();
-                window['PR_SHOULD_USE_CONTINUATION'] = false;
-                //subscribe to change event
-                jslib.subscribe('sp.call.changed', function (select) {
-                    var slt = select || formElm.apicall,
-                        //get value
-                        value = slt.options[slt.selectedIndex].value;
-                    if (value !== "0") {
-                        //clear
-                        exampleElm.innerHTML = resultElm.innerHTML = '';
-                        //get example
-                        Net.post(backend, {call: value, example: true}, function (data) {
-                            jslib('sp.show', data);
-                        }, 'json');
-                    }
-                });
-                //subscribe to show event that will show the backend result
-                jslib.subscribe('sp.show', function (data) {
-                    var row = '',
-                        details,
-                        result;
-                    if (data.example) {
-                        //cache buster for prettyprint
-                        exampleElm.className = 'prettyprint t' + (+new Date());
-                        //add example to the page
-                        exampleElm.appendChild(document.createTextNode(data.example));
-                        //prettyprint
-                        prettyPrint();
-                    }
-                    if (data.result) {
-                        for (var name in data.result) {
-                            details = TmpDetails.replace(':callname:', name);
-                            result = data.result[name];
-                            if (!result.isError) {
-                                row = TmpTableRow.replace(':param:', 'isError').replace(':value:', 'false');
-                                result = result.data;
+            SpilGames(['Net', 'DOMSelect', 'JSLib'], function (Net, DOM, jslib) {
+                var apicalls = {};
+                Net.get('example.xml', function (examples) {
+                    var select = DOM.get("#api-calls"),
+                        modules = DOM.getAll("module", examples),
+                        methods,
+                        optgroup,
+                        option,
+                        exmaple;
+                    //module
+                    for (var i = 0, max = modules.length; i < max; i++) {
+                        optgroup = document.createElement('optgroup');
+                        optgroup.label = modules[i].getAttribute('name');
+                        methods = DOM.getAll("method", modules[i]);
+                        for (var j = 0, maxj = methods.length; j < maxj; j++) {
+                            option = document.createElement('option');
+                            option.innerHTML = option.value =  methods[j].getAttribute("name");
+                            exmaple = DOM.get('example', methods[j]).childNodes;
+                            apicalls[option.value] = "";
+                            for (var x = 0, maxx = exmaple.length; x < maxx; x++) {
+                                apicalls[option.value] += exmaple[x].nodeValue;
                             }
-                            for (var param in result) {
-                                row += TmpTableRow.replace(':param:', param).replace(':value:', result[param]);
-                            }
-                            resultElm.innerHTML += details.replace(':calltable:', row);
+                            //trim
+                            apicalls[option.value] = apicalls[option.value].replace(/^(\n|\r| )|(\n|\r| )$/, "");
+                            optgroup.appendChild(option);
                         }
+                        select.appendChild(optgroup);
+                    }
+                }, 'xml');
+                //live test example
+                jslib.subscribe('example.test', function () {
+                    var select = DOM.get("#api-calls"),
+                        method = select.options[select.selectedIndex].value,
+                        callResult = DOM.get("#callResult");
+                    //post the exmaple method
+                    callResult.innerHTML = "LOADING...";
+                    Net.post(location.href, {example: method}, function (result){
+                        //reset for pretty print
+                        callResult.className = "prettyprint lang-php linenums";
+                        callResult.innerHTML = result;
+                         PR.prettyPrint();
+                    }, "text");
+                });
+                //show example
+                jslib.subscribe('example.show', function (select) {
+                    var method = select.options[select.selectedIndex].value,
+                        example = DOM.get("#callExample"),
+                        test = DOM.get("#testExample");
+                    if (apicalls[method]) {
+                        //reset for pretty print
+                        example.className = "prettyprint lang-php linenums";
+                        example.innerHTML = apicalls[method];
+                        PR.prettyPrint();
+
+                        test.style.display =  "block";
+                        test.innerHTML = "Test " + method + " example!";
+                    } else {
+                        example.innerHTML = "";
+                        test.style.display =  "none";
                     }
                 });
             });
@@ -195,27 +157,20 @@ EXAMPLE;
             <summary>PHP Version</summary>
             <strong><?php echo phpversion(); ?></strong>
         </details>
-    </body>
-    <form action="/", method="post" id="callForm">
-        <select onchange="SpilGames({waiton: 'sp.jsready'}, 'sp.call.changed', this);" name="apicall" id="apicall">
-            <option value="0" selected="selected">
-                Select an API call
-            </option>
-            <optgroup label="Account">
-                <option value="SpilGames::ACCOUNT_GETAPPLICATIONTOKEN">
-                    SpilGames::ACCOUNT_GETAPPLICATIONTOKEN
-                </option>
-            </optgroup>
-            <optgroup label="User">
-                <option value="SpilGames::USER_GET">
-                    SpilGames::USER_GET
-                </option>
-                <option value="SpilGames::USER_GETEXTENDED">
-                    SpilGames::USER_GETEXTENDED
-                </option>
-            </optgroup>
+        <details>
+            <summary>PHP parameters</summary>
+            <?php 
+                foreach ($_GET as $key => $value ) {
+                    echo $key . ' : <strong>' . $value . '</strong><br />';
+                }
+            ?>
+        </details>
+        <h3>API example calls</h3>
+        <select id="api-calls" onchange="SpilGames('example.show', this)">
+            <option value="">Please selected a example call</option>
         </select>
-    </form>
-    <pre id="callExample" class="prettyprint"></pre>
-    <div id="callResult"></div>
+        <pre id="callExample"></pre>
+        <button style="display: none" onclick="SpilGames('example.test')" id="testExample"></button>
+        <pre id="callResult"></pre>
+    </body>
 </html>
