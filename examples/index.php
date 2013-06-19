@@ -1,14 +1,35 @@
 <?php
+    session_start();
     #inlcude SpilGames lib
-    require_once('SpilGames.php');
+    require_once('../src/SpilGames.php');
     #example settings
     require_once('example.settings.php');
     //small test of the secret is set
     if (empty($SpilGamesSecret)) {
-        echo '<p><mark>The $SpilGamesSecret is empty in the example.settings.php, you must enter your SpilGames secret here<mark></p>';
+        exit('<p><mark>The $SpilGamesSecret is empty in the example.settings.php, you must enter your SpilGames secret here<mark></p>');
     }
     //set SpilGames secret
     SpilGames::set(SpilGames::SETTING_SECRET, $SpilGamesSecret);
+    /**
+     * Handle token changes
+     */
+    //update currentToken from request 
+    if (isset($_REQUEST['appToken'])) {
+        //check of oldToken is the not the same as token from reques
+        if (isset($_SESSION['oldToken']) && $_REQUEST['appToken'] != $_SESSION['oldToken']) {
+            $_SESSION['currentToken'] = $_REQUEST['appToken'];
+        }
+        //if oldToken is not set create oldToken
+        if (!isset($_SESSION['oldToken'])) {
+            $_SESSION['oldToken'] = $_SESSION['currentToken'] = $_REQUEST['appToken'];
+        }
+    }
+    //subscribe to appauth change event and update the current token.
+    SpilGames::subscribe(SpilGames::EVENT_APPAUTH_CHANGED, function () {
+        $_SESSION['currentToken'] = SpilGames(SpilGames::AUTH_GETAPPLICATIONTOKEN);
+    });
+    //set token
+    SpilGames::set(SpilGames::SETTING_AUTH, $_SESSION['currentToken']);
     /**
      * Run example what is selected on the font-end
      */
@@ -26,7 +47,11 @@
             case "string":
                 $data = (string) $node;
                 break;
-                
+
+            case "int" :
+                $data = (int) $node;
+                break;
+
         }
     }
     //check of call is a post
@@ -164,6 +189,10 @@
                     echo $key . ' : <strong>' . $value . '</strong><br />';
                 }
             ?>
+        </details>
+        <details>
+            <summary>Current Token</summary>
+            <strong><?php echo $_SESSION['currentToken']; ?></strong>
         </details>
         <h3>API example calls</h3>
         <select id="api-calls" onchange="SpilGames('example.show', this)">

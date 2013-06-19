@@ -1,7 +1,10 @@
 <?php
     /**
-     *
-     * @version 1.0.0
+     * Spil Games PHP API client
+     * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_PHP_inclusion
+     * @author Spil Games <integrationsupport@spilgames.com>
+     * @copyright 2013 Spil Games
+     * @version 1.0.1
      */
     class SpilGames {
         ################## Public API ##################
@@ -27,6 +30,27 @@
          */
         const LEVEL_USER = 'user';
         /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#STATE_PAYMENT_CLOSED
+         */
+        const STATE_PAYMENT_CLOSED = "payment-closed";
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#STATE_PAYMENT_SUCCESS
+         */
+        const STATE_PAYMENT_SUCCESS = "payment-success";
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#STATE_PAYMENT_FAILURE
+         */
+        const STATE_PAYMENT_FAILURE = "payment-failure";
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#STATE_PAYMENT_PENDING
+         */
+        const STATE_PAYMENT_PENDING = "payment-pending";
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#STATE_PAYMENT_CANCEL
+         */
+        const STATE_PAYMENT_CANCEL = "payment-cancel";
+        ### USER ###
+        /**
          * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.user.get
          */
         const USER_GET = "api.user.get";
@@ -35,44 +59,73 @@
          */
         const USER_GETEXTENDED = "api.user.getExtended";
         /**
-         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.account.getApplicationToken
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.user.list
          */
         const USER_LIST = "api.user.list";
+        ### AUTH ###
         /**
-         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.account.getApplicationToken
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.auth.getApplicationToken
          * @deprecated use AUTH_GETAPPLICATIONTOKEN instead
          */
         const ACCOUNT_GETAPPLICATIONTOKEN = "api.account.getApplicationToken";
         /**
-         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.account.getApplicationToken
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.auth.getApplicationToken
          */
-        const AUTH_GETAPPLICATIONTOKEN = "api.account.getApplicationToken";
+        const AUTH_GETAPPLICATIONTOKEN = "api.auth.getApplicationToken";
+        ### FRIEND ###
         /**
          * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.friend.list
          */
         const FRIEND_LIST = "api.friend.list";
+        ### PORTAL ###
         /**
          * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.portal.force.auth
          */
         const FORCE_AUTH = 'api.portal.force.auth';
         /**
-         * will be published on user login
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.portal.user.consent
          */
-        const EVENT_USER_LOGIN = "api.event.user.login";
+        const USER_CONSENT = 'api.portal.user.consent';
         /**
-         * will be published on user logout
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.portal.invite.friends
          */
-        const EVENT_USER_LOGOUT = "api.event.user.logout";
+        const INVITE_FRIENDS = 'api.portal.invite.friends';
         /**
-         * @see http://devs.spilgames.com
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.portal.canvas.setSize
+         */
+        const CANVAS_SETSIZE = 'api.portal.canvas.setSize';
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.portal.canvas.setSize
+         */
+        const PAYMENT_SHOP = 'api.portal.payment.shop';
+        ### EVENTS ###
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.event.user.login
+         */
+        const EVENT_USER_LOGIN  = 'api.event.user.login';
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.event.user.logout
+         */
+        const EVENT_USER_LOGOUT = 'api.event.user.logout';
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.event.appauth.changed
          */
         const EVENT_APPAUTH_CHANGED = 'api.event.appauth.changed';
         /**
-         * @see http://devs.spilgames.com
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.event.overlay.shown
+         */
+        const EVENT_OVERLAY_SHOWN = 'api.event.overlay.shown';
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_api.event.overlay.hidden
+         */
+        const EVENT_OVERLAY_HIDDEN = 'api.event.overlay.hidden';
+        ### SETTINGS ###
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_PHP_inclusion
          */
         const SETTING_AUTH = 'set.application.token';
         /**
-         * @see http://devs.spilgames.com
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_PHP_inclusion
          */
         const SETTING_SECRET = 'set.application.secret';
         /**
@@ -277,7 +330,7 @@
             $sendData .= 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8' . $crlf;
             $sendData .= 'Accept-Encoding: gzip, deflate' . $crlf;
             $sendData .= 'Content-length: '. strlen($encodeData). $crlf;
-            $sendData .= 'X-App-Sig: ' . base64_encode(sha1($encodeData . $this->_settings[self::SETTING_SECRET])) . $crlf;
+            $sendData .= 'X-App-Sig: ' . base64_encode(sha1($encodeData . $this->_settings[self::SETTING_SECRET], true)) . $crlf;
             //extra header
             $sendData .= 'Connection: keep-alive' . $crlf . $crlf;
             $sendData .= $encodeData . $crlf . $crlf;
