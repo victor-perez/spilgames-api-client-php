@@ -4,7 +4,7 @@
      * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_PHP_inclusion
      * @author Spil Games <integrationsupport@spilgames.com>
      * @copyright 2013 Spil Games
-     * @version 1.0.1
+     * @version 1.0.2
      */
     class SpilGames {
         ################## Public API ##################
@@ -12,7 +12,7 @@
          * @var string contains client version
          * @see https://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#CLIENT_VERSION
          */
-        const CLIENT_VERSION = "1.0.1";
+        const CLIENT_VERSION = "1.0.2";
         /**
          * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#STATE_LOGGEDIN
          */
@@ -183,9 +183,13 @@
          */
         protected final function __construct () {
             //set apptoken
-            $this->_settings[self::SETTING_AUTH] = $_REQUEST['apptoken'] or
-            $this->_settings[self::SETTING_AUTH] = $_REQUEST['appToken'] or
-            $this->_settings[self::SETTING_AUTH] = "";
+            if(isset($_REQUEST['apptoken'])) {
+                $this->_settings[self::SETTING_AUTH] = $_REQUEST['apptoken']
+            } else if (isset($_REQUEST['appToken'])) {
+                $this->_settings[self::SETTING_AUTH] = $_REQUEST['appToken']
+            } else {
+                $this->_settings[self::SETTING_AUTH] = "";
+            }
         }
         /**
          * Set some settings that are needed for Backend to backend communication
@@ -509,7 +513,7 @@
             //decode data
             $decodeData = unpack("a1magic_byte/Cversion/Ctype/Creserved/Ckeyspace/Ckey/Ngid_high/Ngid_low/nsite/Cchannel/Cauthorization_level/Ntimestamp/NappId_high/NappId_low/a*profilar_username", $rawData);
             //check keyspace
-            if ($decodedData['keyspace'] > 1) {
+            if ($decodeData['keyspace'] > 1) {
                 throw new Exception("Invalid keyspace");
             }
             //retrun data
