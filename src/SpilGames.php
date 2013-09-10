@@ -12,7 +12,7 @@
          * @var string contains client version
          * @see https://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#CLIENT_VERSION
          */
-        const CLIENT_VERSION = "1.0.2";
+        const CLIENT_VERSION = "1.0.3";
         /**
          * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_Constants#STATE_LOGGEDIN
          */
@@ -184,9 +184,9 @@
         protected final function __construct () {
             //set apptoken
             if(isset($_REQUEST['apptoken'])) {
-                $this->_settings[self::SETTING_AUTH] = $_REQUEST['apptoken']
+                $this->_settings[self::SETTING_AUTH] = $_REQUEST['apptoken'];
             } else if (isset($_REQUEST['appToken'])) {
-                $this->_settings[self::SETTING_AUTH] = $_REQUEST['appToken']
+                $this->_settings[self::SETTING_AUTH] = $_REQUEST['appToken'];
             } else {
                 $this->_settings[self::SETTING_AUTH] = "";
             }
@@ -298,7 +298,7 @@
          * @param array|null $data, data that you want to send along the API call
          * @return array, SPAPI request result
          */
-        private final function _spapiRequest ($path, $data) {
+        private final function _spapiRequest ($path, $data, $socketRetry = false) {
             //settings
             $host = 'api.spilgames.com';
             $port = 443;
@@ -320,13 +320,15 @@
             //build connection
             $context = stream_context_create();
             stream_context_set_option($context, 'ssl', 'verify_host', true);
-            $fp = stream_socket_client('ssl://' . $host . ':' . $port, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
+            $fp = stream_socket_client('ssl://' . $host . ':' . $port, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT | STREAM_CLIENT_PERSISTENT, $context);
             //check connection
             if(!$fp) {
                 return $this->_makeError($errstr, $errno);
             }
             //set timeout
             stream_set_timeout($fp, $timeout);
+            //set stream non blocking
+            stream_set_blocking($fp, 0);
             //headers
             $sendData = 'POST ' . $path . '/ HTTP/1.1' . $crlf;
             $sendData .= 'Host: ' . $host . $crlf;
@@ -336,27 +338,43 @@
             $sendData .= 'Content-length: '. strlen($encodeData). $crlf;
             $sendData .= 'X-App-Sig: ' . base64_encode(sha1($encodeData . $this->_settings[self::SETTING_SECRET], true)) . $crlf;
             //extra header
-            $sendData .= 'Connection: keep-alive' . $crlf . $crlf;
+            $sendData .= 'Connection: Keep-Alive' . $crlf . $crlf;
             $sendData .= $encodeData . $crlf . $crlf;
             //send
-            //exit;
-            fwrite($fp, $sendData);
+            //write to socket
+            if(fwrite($fp, $sendData) === false) {
+                //persistent socket was broken, retry to connect
+                fclose($fp);
+                //restart socket
+                if (!$socketRetry) {
+                    return $this->_spapiRequest($path, $data, true);
+                } else {
+                    return $this->_makeError("Cannot write to socket", 0, null, "");
+                }
+            }
             //read content and headers
             $content = null;
             $headers = array();
             $lineNr = 0;
             $responceCode = 0;
+            $firstLineStart = time();
             while (!feof($fp)) {
                 //get line
                 $line = stream_get_line($fp, 1024, $crlf);
+                //first line can give false, because we need to wait on write
+                if ($line === false && $lineNr === 0) {
+                    if ((time() - $firstLineStart) < $timeout) {
+                        continue;
+                    } else {
+                        return $this->_makeError("Cannot write from socket", 0, null, "socket read timeout");
+                    }
+                }
                 //first line contains http responce code.
                 if ($lineNr === 0) {
                     $firstLine = preg_match('@HTTP/[1-9][0-9]*.[1-9][0-9]*\s([1-9][0-9]*)\s(.*)@', $line, $firstLineData);
                     $responceCode = intval($firstLineData[1]);
                     //bigger than 300 is always a error for the SPAPI
                     if($responceCode >= 300) {
-                        //close on error
-                        fclose($fp);
                         //return error
                         return $this->_makeError($firstLineData[0], $responceCode, $firstLineData[2]);
                     }
@@ -396,6 +414,7 @@
                             }
                             //transfer-length
                             stream_get_line($fp, 128, $crlf);
+                            break;
                         }
                     } else {
                         //end part
@@ -409,8 +428,6 @@
                 //next line nr
                 $lineNr++;
             }
-            //close connection
-            fclose($fp);
             //json decode
             $jsonContent = json_decode($content, true);
             //check for errors
