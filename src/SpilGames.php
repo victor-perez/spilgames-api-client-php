@@ -129,6 +129,18 @@
          */
         const SETTING_SECRET = 'set.application.secret';
         /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_PHP_inclusion
+         */
+        const SETTING_ENDPOINT = 'set.api.endpoint';
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_PHP_inclusion
+         */
+        const SETTING_SSL_VERIFY_HOST = 'set.ssl.verify';
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_PHP_inclusion
+         */
+        const SETTING_PROXY = 'set.api.proxy';
+        /**
          * The main interface of the API
          * @param $call string, Contains the name of the call for the API, for example "api.user.get".
          * @param $data array|null, Contains the data that is needed for the call, if no extra data is needed for the call you can use NULL
@@ -178,6 +190,8 @@
          * @var SpilGames
          */
         private static $_instance = null;
+
+        private $_cache = array();
         /**
          * SpilGames constuctor
          */
@@ -190,6 +204,12 @@
             } else {
                 $this->_settings[self::SETTING_AUTH] = "";
             }
+            //set default API end point
+            $this->_settings[self::SETTING_ENDPOINT] = "https://api.spilgames.com";
+            //set ssl verify_host default on
+            $this->_settings[SpilGames::SETTING_SSL_VERIFY_HOST] = true;
+            //connect to proxy
+            //$this->_settings[SpilGames::SETTING_PROXY];
         }
         /**
          * Set some settings that are needed for Backend to backend communication
@@ -293,6 +313,59 @@
             }
         }
         /**
+         * Small cache method 
+         * @param  string $key, key that you want to use to cache the data
+         * @param  mixed $store data that you want to cache, use null to only return the cached data
+         * @return mixed        the data stored in cache, null if there is no cache data
+         */
+        private final function _cache ($key, $store = null) {
+            //store cache
+            if ($store !== null) {
+                $this->_cache[$key] = $store;
+            }
+            //return cache
+            if (isset($this->_cache[$key])) {
+                return $this->_cache[$key];
+            }
+            return null;
+        }
+        /**
+         * parse endpoint and returns the parts needed to make the call
+         * @return array, parts of the endpoint
+         */
+        private final function _parseEndPoint () {
+            $parts = $this->_cache($this->_settings[self::SETTING_ENDPOINT]);
+            if (empty($parts)) {
+                $parts = array();
+                $parseEndPoint = parse_url($this->_settings[self::SETTING_ENDPOINT]);
+                switch ($parseEndPoint['scheme']) {
+                    //ssl scheme
+                    case 'https':
+                    case 'ssl':
+                        $parts['transport'] = "ssl";
+                        $parts['port'] = 443;
+                        break;
+                    //http ( only if a proxy is used )
+                    case 'http':
+                        $parts['transport'] = "tcp";
+                        $parts['port'] = 80;
+                        break;
+                    default:
+                        $parts['transport'] = $parseEndPoint['scheme'];
+                        $parts['port'] = 80;
+                }
+                //port
+                if (isset($parseEndPoint['port'])) {
+                    $parts['port'] = $parseEndPoint['port'];
+                }
+                //host
+                $parts['host'] = $parseEndPoint['host'];
+                //cache
+                $this->_cache($this->_settings[self::SETTING_ENDPOINT], $parts);
+            }
+            return  $parts;
+        }
+        /**
          * Will make the request to SPAPI ( SpilGames Public API) and will return the result of the call
          * @param string $path, path of the RESTApi call
          * @param array|null $data, data that you want to send along the API call
@@ -300,8 +373,7 @@
          */
         private final function _spapiRequest ($path, $data, $socketRetry = false) {
             //settings
-            $host = 'api.spilgames.com';
-            $port = 443;
+            $endPoint = $this->_parseEndPoint();
             $crlf = "\r\n";
             $timeout = 2;
             //check of call has token
@@ -319,8 +391,18 @@
             $encodeData = json_encode($data);
             //build connection
             $context = stream_context_create();
-            stream_context_set_option($context, 'ssl', 'verify_host', true);
-            $fp = stream_socket_client('ssl://' . $host . ':' . $port, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT | STREAM_CLIENT_PERSISTENT, $context);
+            //protocol version
+            stream_context_set_option($context, 'ssl', 'protocol_version', 1.1);
+            //verify host
+            if ((!isset($this->_settings[self::SETTING_SSL_VERIFY_HOST]) || $this->_settings[self::SETTING_SSL_VERIFY_HOST]) && $endPoint['transport'] == "ssl") {
+                stream_context_set_option($context, 'ssl', 'verify_host', true);
+            }
+            //proxy
+            if (isset($this->_settings[self::SETTING_PROXY])) {
+                stream_context_set_option($context, $endPoint['transport'], 'proxy', $this->_settings[self::SETTING_PROXY]);
+            }
+            //create socket client
+            $fp = stream_socket_client($endPoint['transport'] .  '://' . $endPoint['host'] . ':' . $endPoint['port'], $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT | STREAM_CLIENT_PERSISTENT, $context);
             //check connection
             if(!$fp) {
                 return $this->_makeError($errstr, $errno);
@@ -331,7 +413,7 @@
             stream_set_blocking($fp, 0);
             //headers
             $sendData = 'POST ' . $path . '/ HTTP/1.1' . $crlf;
-            $sendData .= 'Host: ' . $host . $crlf;
+            $sendData .= 'Host: ' . $endPoint['host'] . $crlf;
             $sendData .= 'User-Agent: SpilGames-API-PHP-Client-v' . self::CLIENT_VERSION . $crlf;
             $sendData .= 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8' . $crlf;
             $sendData .= 'Accept-Encoding: gzip, deflate' . $crlf;

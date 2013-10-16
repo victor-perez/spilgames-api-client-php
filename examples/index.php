@@ -96,7 +96,7 @@
         <meta name="description" content="SpilGames API test page">
         <meta name="viewport" content="width=device-width">
         <!-- SpilGames JavaScript lib -->
-        <script src="//api.spilgames.com/js"></script>
+        <script src="//api.spilgames.com/js/"></script>
         <!-- SyntaxHighlighter //-->
         <script src="//google-code-prettify.googlecode.com/svn/loader/run_prettify.js?autoload=false&skin=sons-of-obsidian" type="text/javascript"></script>
         <!--[if lt IE 9]>
