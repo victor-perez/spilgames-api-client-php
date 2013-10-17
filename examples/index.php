@@ -14,14 +14,14 @@
      * Handle token changes
      */
     //update currentToken from request 
-    if (isset($_REQUEST['appToken'])) {
+    if (isset($_REQUEST['apptoken'])) {
         //check of oldToken is the not the same as token from reques
-        if (isset($_SESSION['oldToken']) && $_REQUEST['appToken'] != $_SESSION['oldToken']) {
-            $_SESSION['currentToken'] = $_REQUEST['appToken'];
+        if (isset($_SESSION['oldToken']) && $_REQUEST['apptoken'] != $_SESSION['oldToken']) {
+            $_SESSION['currentToken'] = $_REQUEST['apptoken'];
         }
         //if oldToken is not set create oldToken
         if (!isset($_SESSION['oldToken'])) {
-            $_SESSION['oldToken'] = $_SESSION['currentToken'] = $_REQUEST['appToken'];
+            $_SESSION['oldToken'] = $_SESSION['currentToken'] = $_REQUEST['apptoken'];
         }
     }
     //subscribe to appauth change event and update the current token.
@@ -30,6 +30,7 @@
     });
     //set token
     SpilGames::set(SpilGames::SETTING_AUTH, $_SESSION['currentToken']);
+    //SpilGames::set(SpilGames::SETTING_REQUEST_HANDLER, SpilGames::SETTING_REQUEST_HANDLER_CURL);
     /**
      * Run example what is selected on the font-end
      */
