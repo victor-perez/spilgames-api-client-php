@@ -14,14 +14,14 @@
      * Handle token changes
      */
     //update currentToken from request 
-    if (isset($_REQUEST['appToken'])) {
+    if (isset($_REQUEST['apptoken'])) {
         //check of oldToken is the not the same as token from reques
-        if (isset($_SESSION['oldToken']) && $_REQUEST['appToken'] != $_SESSION['oldToken']) {
-            $_SESSION['currentToken'] = $_REQUEST['appToken'];
+        if (isset($_SESSION['oldToken']) && $_REQUEST['apptoken'] != $_SESSION['oldToken']) {
+            $_SESSION['currentToken'] = $_REQUEST['apptoken'];
         }
         //if oldToken is not set create oldToken
         if (!isset($_SESSION['oldToken'])) {
-            $_SESSION['oldToken'] = $_SESSION['currentToken'] = $_REQUEST['appToken'];
+            $_SESSION['oldToken'] = $_SESSION['currentToken'] = $_REQUEST['apptoken'];
         }
     }
     //subscribe to appauth change event and update the current token.
@@ -30,6 +30,7 @@
     });
     //set token
     SpilGames::set(SpilGames::SETTING_AUTH, $_SESSION['currentToken']);
+    //SpilGames::set(SpilGames::SETTING_REQUEST_HANDLER, SpilGames::SETTING_REQUEST_HANDLER_CURL);
     /**
      * Run example what is selected on the font-end
      */
@@ -96,7 +97,7 @@
         <meta name="description" content="SpilGames API test page">
         <meta name="viewport" content="width=device-width">
         <!-- SpilGames JavaScript lib -->
-        <script src="//api.spilgames.com/js"></script>
+        <script src="//api.spilgames.com/js/"></script>
         <!-- SyntaxHighlighter //-->
         <script src="//google-code-prettify.googlecode.com/svn/loader/run_prettify.js?autoload=false&skin=sons-of-obsidian" type="text/javascript"></script>
         <!--[if lt IE 9]>

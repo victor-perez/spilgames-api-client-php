@@ -129,6 +129,26 @@
          */
         const SETTING_SECRET = 'set.application.secret';
         /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_PHP_inclusion
+         */
+        const SETTING_ENDPOINT = 'set.api.endpoint';
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_PHP_inclusion
+         */
+        const SETTING_SSL_VERIFY_PEER = 'set.ssl.verify';
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_PHP_inclusion
+         */
+        const SETTING_SSL_CAPATH = 'set.sll.capath';
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_PHP_inclusion
+         */
+        const SETTING_REQUEST_HANDLER = "set.request.handler";
+        /**
+         * @see http://devs.spilgames.com/docs/w/Developer_platform_-_Learning_center_-_API_-_PHP_inclusion
+         */
+        const SETTING_REQUEST_HANDLER_CURL = "set.request.handler.curl";
+        /**
          * The main interface of the API
          * @param $call string, Contains the name of the call for the API, for example "api.user.get".
          * @param $data array|null, Contains the data that is needed for the call, if no extra data is needed for the call you can use NULL
@@ -178,6 +198,8 @@
          * @var SpilGames
          */
         private static $_instance = null;
+
+        private $_cache = array();
         /**
          * SpilGames constuctor
          */
@@ -190,6 +212,10 @@
             } else {
                 $this->_settings[self::SETTING_AUTH] = "";
             }
+            //set default API end point
+            $this->_settings[self::SETTING_ENDPOINT] = "https://api.spilgames.com";
+            //set default path to ca
+            $this->_settings[self::SETTING_SSL_CAPATH] = __DIR__ . "/ca-bundle.crt";
         }
         /**
          * Set some settings that are needed for Backend to backend communication
@@ -214,7 +240,7 @@
             //check of secret is set
             if (empty($this->_settings[self::SETTING_SECRET])) {
                 return $this->_makeResult($this->_makeError(
-                        'Application-secret is missing, please provide an application-secret', 0, 'use SpilGames::set(SpilGames::SETTINGS_SECRET, "yoursecret") to set an secret'),
+                        'Application-secret is missing, please provide an application-secret', 0, 'use SpilGames::set(SpilGames::SETTING_SECRET, "yoursecret") to set an secret'),
                     $callback);
             }
             //parse call string
@@ -293,34 +319,84 @@
             }
         }
         /**
-         * Will make the request to SPAPI ( SpilGames Public API) and will return the result of the call
-         * @param string $path, path of the RESTApi call
-         * @param array|null $data, data that you want to send along the API call
-         * @return array, SPAPI request result
+         * Small cache method 
+         * @param  string $key, key that you want to use to cache the data
+         * @param  mixed $store data that you want to cache, use null to only return the cached data
+         * @return mixed        the data stored in cache, null if there is no cache data
          */
-        private final function _spapiRequest ($path, $data, $socketRetry = false) {
+        private final function _cache ($key, $store = null) {
+            //store cache
+            if ($store !== null) {
+                $this->_cache[$key] = $store;
+            }
+            //return cache
+            if (isset($this->_cache[$key])) {
+                return $this->_cache[$key];
+            }
+            return null;
+        }
+        /**
+         * Will make SPAPI request via persistent sockets
+         * @param  string      $path        path of the RPC call
+         * @param  array|null  $data        data that you want to send along the API call
+         * @param  boolean $socketRetry     if the socket is down, it will retry to connect again.
+         * @return string                   result of the SPAPI call
+         */
+        private final function _spapiViaSockets ($path, $data, $socketRetry = false) {
+            //get end point from ache
+            $endPoint = $this->_cache($this->_settings[self::SETTING_ENDPOINT]);
+            //check cache
+            if (empty($endPoint)) {
+                $endPoint = array();
+                $parseEndPoint = parse_url($this->_settings[self::SETTING_ENDPOINT]);
+                switch ($parseEndPoint['scheme']) {
+                    //ssl scheme
+                    case 'https':
+                    case 'ssl':
+                        $endPoint['transport'] = "ssl";
+                        $endPoint['port'] = 443;
+                        break;
+                    //http ( only if a proxy is used )
+                    case 'http':
+                        $endPoint['transport'] = "tcp";
+                        $endPoint['port'] = 80;
+                        break;
+                    default:
+                        $endPoint['transport'] = $parseEndPoint['scheme'];
+                        $endPoint['port'] = 80;
+                }
+                //port
+                if (isset($parseEndPoint['port'])) {
+                    $endPoint['port'] = $parseEndPoint['port'];
+                }
+                //host
+                $endPoint['host'] = $parseEndPoint['host'];
+                //cache
+                $this->_cache($this->_settings[self::SETTING_ENDPOINT], $endPoint);
+            }
             //settings
-            $host = 'api.spilgames.com';
-            $port = 443;
             $crlf = "\r\n";
             $timeout = 2;
-            //check of call has token
-            if (!isset($data['auth'])) {
-                $data['auth'] = array('token'=>$this->_settings[self::SETTING_AUTH]);
-            }
-            //check of token is valid
-            try {
-                $this->_parseToken($data['auth']['token']);
-            } catch (Exception $tokenError) {
-                //return error
-                return $this->_makeError($tokenError->getMessage(), 0, 'The application has provided an invalid token or the secret is invalid');
-            }
-            //encode token
+           //encode token
             $encodeData = json_encode($data);
             //build connection
-            $context = stream_context_create();
-            stream_context_set_option($context, 'ssl', 'verify_host', true);
-            $fp = stream_socket_client('ssl://' . $host . ':' . $port, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT | STREAM_CLIENT_PERSISTENT, $context);
+            $context = stream_context_create(array(
+                "http" => array(
+                    "protocol_version" => 1.1
+                )
+            ));
+            //verify host
+            if ((!isset($this->_settings[self::SETTING_SSL_VERIFY_PEER]) || $this->_settings[self::SETTING_SSL_VERIFY_PEER]) && $endPoint['transport'] == "ssl") {
+                //check of ca path is dir
+                if (is_dir($this->_settings[self::SETTING_SSL_CAPATH])) {
+                    stream_context_set_option($context, 'ssl', 'capath', $this->_settings[self::SETTING_SSL_CAPATH]);
+                } else {
+                    stream_context_set_option($context, 'ssl', 'cafile', $this->_settings[self::SETTING_SSL_CAPATH]);
+                }
+                stream_context_set_option($context, 'ssl', 'verify_peer', true);
+            }
+            //create socket client
+            $fp = stream_socket_client($endPoint['transport'] .  '://' . $endPoint['host'] . ':' . $endPoint['port'], $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT | STREAM_CLIENT_PERSISTENT, $context);
             //check connection
             if(!$fp) {
                 return $this->_makeError($errstr, $errno);
@@ -331,7 +407,7 @@
             stream_set_blocking($fp, 0);
             //headers
             $sendData = 'POST ' . $path . '/ HTTP/1.1' . $crlf;
-            $sendData .= 'Host: ' . $host . $crlf;
+            $sendData .= 'Host: ' . $endPoint['host'] . $crlf;
             $sendData .= 'User-Agent: SpilGames-API-PHP-Client-v' . self::CLIENT_VERSION . $crlf;
             $sendData .= 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8' . $crlf;
             $sendData .= 'Accept-Encoding: gzip, deflate' . $crlf;
@@ -347,7 +423,7 @@
                 fclose($fp);
                 //restart socket
                 if (!$socketRetry) {
-                    return $this->_spapiRequest($path, $data, true);
+                    return $this->_spapiViaSockets($path, $data, true);
                 } else {
                     return $this->_makeError("Cannot write to socket", 0, null, "");
                 }
@@ -427,6 +503,87 @@
                 }
                 //next line nr
                 $lineNr++;
+            }
+            //return content
+            return $content;
+        }
+        /**
+         * Will make a SPAPI call via curl
+         * @param  string $path path of the RESTApi call
+         * @param  array|null $data ata that you want to send along the API call
+         * @return string  result of the SPAPI call
+         */
+        private final function _spapiViaCurl ($path, $data) {
+            $parseEndPoint = parse_url($this->_settings[self::SETTING_ENDPOINT]);
+            $curl = curl_init();
+            $encodeData = json_encode($data);
+            //curl options
+            $curlOption = array(
+                //set version
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                //set post data
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $encodeData,
+                //set User-Agent
+                CURLOPT_USERAGENT => 'SpilGames-API-PHP-Client-v' . self::CLIENT_VERSION,
+                //request url
+                CURLOPT_URL => $parseEndPoint['scheme'] . '://' . $parseEndPoint['host'] . $path . '/',
+                //headers needed for App Sig
+                CURLOPT_HTTPHEADER => array(
+                    'X-App-Sig: '. base64_encode(sha1($encodeData . $this->_settings[self::SETTING_SECRET], true))
+                ),
+                CURLOPT_TIMEOUT => 2,
+                CURLOPT_RETURNTRANSFER => true
+            );
+            //set port
+            if (isset($parseEndPoint['port'])) {
+                $curlOption[CURLOPT_PORT] = $parseEndPoint['port'];
+            }
+            //SSL_VERIFY PEER
+            if ((!isset($this->_settings[self::SETTING_SSL_VERIFY_PEER]) || $this->_settings[self::SETTING_SSL_VERIFY_PEER]) && $parseEndPoint['scheme'] == "https") {
+                $curlOption[CURLOPT_SSL_VERIFYPEER] = true;
+                $capath = $this->_settings[self::SETTING_SSL_CAPATH];
+                //if CAPATH is not a dir get the dirname 
+                if (!is_dir($capath)) {
+                    $capath = dirname($capath);
+                }
+                $curlOption[CURLOPT_CAPATH] = $capath;
+                
+            } else {
+                $curlOption[CURLOPT_SSL_VERIFYPEER] = false;
+            }
+            //set curl options
+            curl_setopt_array($curl, $curlOption);
+            //make curl request
+            return curl_exec($curl);
+        }
+        /**
+         * Will make the request to SPAPI ( SpilGames Public API) and will return the result of the call
+         * @param string $path, path of the RESTApi call
+         * @param array|null $data, data that you want to send along the API call
+         * @return array, SPAPI request result
+         */
+        private final function _spapiRequest ($path, $data, $socketRetry = false) {
+            //check of call has token
+            if (!isset($data['auth'])) {
+                $data['auth'] = array('token'=>$this->_settings[self::SETTING_AUTH]);
+            }
+            //check of token is valid
+            try {
+                $this->_parseToken($data['auth']['token']);
+            } catch (Exception $tokenError) {
+                //return error
+                return $this->_makeError($tokenError->getMessage(), 0, 'The application has provided an invalid token or the secret is invalid');
+            }
+            //request handler
+            switch ($this->_settings[self::SETTING_REQUEST_HANDLER]) {
+                //curl
+                case self::SETTING_REQUEST_HANDLER_CURL:
+                    $content = $this->_spapiViaCurl($path, $data);
+                    break;
+                //default ( socket )
+                default:
+                    $content = $this->_spapiViaSockets($path, $data);
             }
             //json decode
             $jsonContent = json_decode($content, true);
